@@ -7,5 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
     "datasets>=5.0.0",
     "dvc>=3.67.1",
+    "mistralai>=2.6.0",
     "pandas>=3.0.3",
+    "python-dotenv>=1.2.2",
 ]
