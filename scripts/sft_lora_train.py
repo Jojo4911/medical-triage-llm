@@ -28,7 +28,7 @@ TRAIN_PATH = "data/splits/sft_train.jsonl"
 VAL_PATH = "data/splits/sft_val.jsonl"
 OUTPUT_DIR = "models/sft-lora-qwen3-1.7b"
 WANDB_PROJECT = "p14-triage-medical"
-WANDB_RUN_NAME = "sft-lora-run-full-j6"          # à adapter si relance
+WANDB_RUN_NAME = "sft-lora-run-full-j6-v2"          # à adapter si relance
 
 
 # --- Formatage du prompt (structure) ------------------------------------
@@ -95,8 +95,6 @@ def main():
     )
     dataset = dataset.map(format_example)
 
-    dataset["train"] = dataset["train"].select(range(min(50, len(dataset["train"]))))
-    dataset["validation"] = dataset["validation"].select(range(min(20, len(dataset["validation"]))))
 
     print(f"Chargement du modele de base : {MODEL_NAME}")
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
