@@ -24,3 +24,5 @@ notes/
 
 # W&B
 wandb/
+*.log
+!models/*.dvc
