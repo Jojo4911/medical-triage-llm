@@ -21,3 +21,6 @@ notes/
 
 # Secrets
 .env
+
+# W&B
+wandb/
