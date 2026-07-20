@@ -23,9 +23,14 @@ DPO_TEXT_FIELDS = ["prompt", "chosen", "rejected"]  # structure imbriquee role/c
 def count_person_entities(text: str, analyzer, language: str) -> int:
     """Recompte les entites PERSON reellement anonymisees (apres filtrage
     des faux positifs), pour le log. Reutilise la meme logique que anonymize_text."""
-    from anonymize_dataset import filter_medical_false_positives, ALLOW_LIST
+    from anonymize_dataset import filter_medical_false_positives, ALLOW_LIST_UNAMBIGUOUS
 
-    results = analyzer.analyze(text=text, language=language, allow_list=ALLOW_LIST)
+    results = analyzer.analyze(
+        text=text,
+        language=language,
+        allow_list=ALLOW_LIST_UNAMBIGUOUS,
+        score_threshold=0.5,  # coherence avec anonymize_text, evite un compte gonfle par des faux positifs bas score
+    )
     results = filter_medical_false_positives(text, results, language)
     return sum(1 for r in results if r.entity_type == "PERSON")
 
