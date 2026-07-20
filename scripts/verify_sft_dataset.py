@@ -1,7 +1,7 @@
 """
-Verification rapide du dataset SFT genere.
-Controle : nombre de lignes, repartition par source, coherence language/medical_subject,
-champs vides, echantillon pour inspection manuelle.
+Vérification rapide du dataset SFT généré.
+Controle : nombre de lignes, répartition par source, cohérence language/medical_subject,
+champs vides, échantillon pour inspection manuelle.
 """
 
 import json
@@ -45,7 +45,7 @@ def check_fields(records: list[dict]) -> None:
 
 
 def check_language_subject_consistency(records: list[dict]) -> None:
-    """Verifie que medical_subject reste dans la langue attendue (point de vigilance J3)."""
+    """Vérifie que medical_subject reste dans la langue attendue."""
     fr_markers = ["cardiologie", "neurologie", "pneumologie", "gastro", "traumatologie",
                   "maladies", "endocrinologie", "autre"]
     en_markers = ["cardiology", "neurology", "pulmonology", "gastroenterology", "trauma",
@@ -75,15 +75,15 @@ def check_distribution(records: list[dict]) -> None:
     languages = Counter(r.get("language", "unknown") for r in records)
     emergency_levels = Counter(r.get("emergency_level", "unknown") for r in records)
 
-    print("\n--- Repartition par source ---")
+    print("\n--- Répartition par source ---")
     for source, count in sources.most_common():
         print(f"{source} : {count}")
 
-    print("\n--- Repartition par langue ---")
+    print("\n--- Répartition par langue ---")
     for lang, count in languages.most_common():
         print(f"{lang} : {count}")
 
-    print("\n--- Repartition par niveau d'urgence ---")
+    print("\n--- Répartition par niveau d'urgence ---")
     for level, count in emergency_levels.most_common():
         print(f"{level} : {count}")
 
@@ -94,7 +94,7 @@ def check_duplicates(records: list[dict]) -> None:
     duplicates = {id_: count for id_, count in id_counts.items() if count > 1}
 
     print(f"\n--- Doublons d'id ---")
-    print(f"{len(duplicates)} id(s) dupliques" if duplicates else "Aucun doublon d'id.")
+    print(f"{len(duplicates)} id(s) dupliqués" if duplicates else "Aucun doublon d'id.")
 
 
 def print_sample(records: list[dict], n: int = 3) -> None:
