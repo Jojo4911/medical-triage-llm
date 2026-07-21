@@ -50,9 +50,19 @@ def format_example(example: dict) -> dict:
     emergency_level, hospital_department) en un champ 'text' unique,
     format attendu par SFTTrainer. Le préfixe medical_history est ajouté
     aux symptomes s'il est présent et non vide, pour enrichir le contexte
-    clinique sans multiplier les champs du template."""
-    symptoms = example.get("symptoms", "") or ""
+    clinique sans multiplier les champs du template.
+
+    Fallback : certaines sources (ex. MedQuAD) n'ont pas de champ symptoms
+    structure, le contenu clinique réel est dans question. Sans ce fallback,
+    le prompt est quasi vide et le modele hallucine (même
+    reponse generée sur deux exemples complètement différents)."""
+    symptoms = (example.get("symptoms", "") or "").strip()
+    question = (example.get("question", "") or "").strip()
     medical_history = example.get("medical_history", "") or ""
+
+    if not symptoms:
+        symptoms = question
+
     if medical_history:
         symptoms = f"{symptoms}. Antecedents: {medical_history}"
 

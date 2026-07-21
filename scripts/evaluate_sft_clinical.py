@@ -38,8 +38,15 @@ def load_clinical_sample(path: str, size: int) -> list[dict]:
 
 
 def build_prompt(example: dict) -> str:
-    symptoms = example.get("symptoms", "") or ""
+    """Meme fallback que format_example dans sft_lora_train.py : utilise
+    question si symptoms est vide (sources type MedQuAD)."""
+    symptoms = (example.get("symptoms", "") or "").strip()
+    question = (example.get("question", "") or "").strip()
     medical_history = example.get("medical_history", "") or ""
+
+    if not symptoms:
+        symptoms = question
+
     if medical_history:
         symptoms = f"{symptoms}. Antecedents: {medical_history}"
     return PROMPT_PREFIX_TEMPLATE.format(symptoms=symptoms)
