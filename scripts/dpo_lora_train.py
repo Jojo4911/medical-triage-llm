@@ -48,6 +48,8 @@ def main():
         num_train_epochs=1,             # 1 a 3 pour DPO, on part sur 1 pour le run pilote
         per_device_train_batch_size=2,
         gradient_accumulation_steps=8,
+        gradient_checkpointing=True,
+        max_length=512,
         logging_steps=10,
         save_strategy="epoch",
         report_to="wandb",              # cohérent avec le tracking déjà utilisé en SFT
