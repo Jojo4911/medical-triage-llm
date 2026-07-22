@@ -58,16 +58,22 @@ Limite connue et documentée, non bloquante : résidu de tags `<LOCATION>` sur d
 ## Modèle
 
 - **SFT + LoRA** : entraîné sur ~5 000 paires instruction-réponse, format structuré (Niveau d'urgence / Service / Explication). Config LoRA : `r=16, lora_alpha=32, target_modules=[q_proj,k_proj,v_proj,o_proj]`. Checkpoint versionné DVC (`models/sft-lora-qwen3-1.7b`).
-- **DPO** : entraînement à partir du modèle SFT, sur les paires préférentielles UltraMedical-Preference, en cours de préparation.
+- **DPO** : entraînement terminé à partir du modèle SFT, sur les 5 000 paires préférentielles issues d'UltraMedical-Preference. Config : `beta=0.1, learning_rate=5e-6, num_train_epochs=1`, adaptateur LoRA désactivable utilisé comme politique de référence (pas de copie séparée du modèle en mémoire). Checkpoint versionné DVC (`models/dpo-lora-qwen3-1.7b`).
 
-Limite connue à ce stade (avant alignement DPO) : le modèle SFT seul peut produire des hallucinations de contenu clinique, dont certaines à risque (diagnostic différentiel erroné sur des tableaux évocateurs d'urgence vitale). Point de comparaison de référence pour l'évaluation post-DPO.
+Métriques finales du run DPO (dernier step logué, tracking Weights & Biases) :
+- `rewards/accuracies` : 0,75
+- `rewards/margins` : 0,84
+- `rewards/chosen` : +0,55, `rewards/rejected` : -0,29
+- `train_loss` : 0,55
+
+Limite connue côté SFT seul, avant alignement DPO : le modèle pouvait produire des hallucinations de contenu clinique, dont certaines à risque (diagnostic différentiel erroné sur des tableaux évocateurs d'urgence vitale). Point de comparaison de référence pour l'évaluation post-DPO à venir (comparaison base / SFT / SFT+DPO sur le jeu d'évaluation clinique).
 
 ## Infrastructure
 
-- Entraînement sur VM GCP (`europe-west4`, GPU NVIDIA L4).
+- Entraînement sur VM GCP (`europe-west4`, GPU NVIDIA L4). Le run DPO complet a été exécuté en zone `europe-west4-c` suite à une indisponibilité temporaire (stockout) de la zone `europe-west4-a` initialement utilisée pour le SFT.
 - Versionnement des données et modèles via DVC, remote GCS.
-- Tracking des runs via Weights & Biases (projet `p14-triage-medical`).
+- Tracking des runs via Weights & Biases (projet `huggingface`).
 
 ## Statut du projet
 
-En cours de développement. Dataset bilingue anonymisé et modèle SFT+LoRA finalisés. Alignement DPO en préparation.
+En cours de développement. Dataset bilingue anonymisé, modèle SFT+LoRA, et alignement DPO tous finalisés. Évaluation comparative (base / SFT / SFT+DPO) et contrôles de sécurité clinique à venir.
