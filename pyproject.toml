@@ -10,6 +10,7 @@ dependencies = [
     "dvc[gs]>=3.67.1",
     "en-core-web-lg",
     "fr-core-news-md",
+    "gitpython==3.1.52",
     "mistralai>=2.6.0",
     "pandas>=3.0.3",
     "peft>=0.19.1",
