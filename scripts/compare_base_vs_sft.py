@@ -11,7 +11,7 @@ BASE_MODEL = "Qwen/Qwen3-1.7B-Base"
 SFT_ADAPTER = "models/sft-lora-qwen3-1.7b"
 DPO_ADAPTER = "models/dpo-lora-qwen3-1.7b"
 
-# Vignettes tirees du jeu d'eval clinique, avec fallback question si symptoms vide
+# Vignettes tirées du jeu d'eval clinique, avec fallback question si symptoms vide
 VIGNETTES = [
     {
         "symptoms": "Douleur thoracique brutale, essoufflement, sueurs froides depuis 20 minutes",
@@ -25,17 +25,25 @@ VIGNETTES = [
         "symptoms": "Cephalees legeres depuis ce matin, pas d'autre symptome",
         "question": None,
     },
+    {
+        "symptoms": "Faiblesse soudaine du bras droit et difficulté à parler depuis 15 minutes, léger vertige, pas de douleur",
+        "question": None,
+    },
+    {
+        "symptoms": "Douleur abdominale diffuse depuis 12 heures, désormais localisée en bas à droite, nausées, fièvre légère à 38",
+        "question": None,
+    },
 ]
 
 PROMPT_TEMPLATE = """Instruction:
 
-Tu es un agent de triage medical. Evalue le niveau d'urgence et oriente le patient.
+Tu es un agent de triage médical. Evalue le niveau d'urgence et oriente le patient.
 
-Symptomes rapportes:
+Symptomes rapportés:
 
 {symptoms}
 
-Reponse:
+Réponse:
 
 """
 
