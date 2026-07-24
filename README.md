@@ -10,14 +10,15 @@ Fine-tuner un modèle de langage compact (Qwen3-1.7B) pour assister le personnel
 
 - **SFT (Supervised Fine-Tuning)** avec LoRA sur un dataset médical bilingue FR/EN
 - **DPO (Direct Preference Optimization)** pour aligner le modèle sur les pratiques cliniques validées
-- **Déploiement** via vLLM, exposé en API FastAPI
-- **CI/CD** automatisé avec GitHub Actions
+- **Déploiement** via vLLM, exposé en API FastAPI, conteneurisé avec Docker
+- **CI/CD** automatisé avec GitHub Actions (à venir)
 
 Statut : Proof of Concept, pas de mise en production.
 
 ## Structure du projet
 
 ```
+├── api/             # API FastAPI exposant l'endpoint de triage
 ├── data/
 │   ├── raw/         # données brutes, non versionnées dans git (DVC)
 │   ├── processed/   # données nettoyées et anonymisées, non versionnées dans git (DVC)
@@ -27,6 +28,7 @@ Statut : Proof of Concept, pas de mise en production.
 │   ├── checks/      # scripts de vérification ponctuelle (audits, diagnostics)
 ├── models/          # checkpoints et poids, non versionnés dans git (DVC)
 ├── reports/         # rapport technique et livrables
+├── Dockerfile       # conteneurisation de l'API de triage
 ```
 
 ## Setup
@@ -55,6 +57,8 @@ Deux points d'entrée :
 
 Limite connue et documentée, non bloquante : résidu de tags `<LOCATION>` sur des termes médicaux figés à consonance géographique (ex. noms de syndromes), quantifié à environ 0,9% sur le jeu DPO (`scripts/checks/check_dpo_anonymization.py`). Décision assumée de ne pas itérer davantage sur Presidio au-delà de ce point pour ce POC.
 
+**Point ouvert (identifié lors des tests d'inférence, J10)** : des tags d'anonymisation non résolus (`<LOCATION>`, `[PATIENT]`) apparaissent parfois dans les réponses générées par le modèle, suggérant qu'un sous-ensemble des paires SFT contient des placeholders Presidio non nettoyés avant l'entraînement. À investiguer et documenter dans le rapport comme limite du pipeline de données.
+
 ## Modèle
 
 - **SFT + LoRA** : entraîné sur ~5 000 paires instruction-réponse, format structuré (Niveau d'urgence / Service / Explication). Config LoRA : `r=16, lora_alpha=32, target_modules=[q_proj,k_proj,v_proj,o_proj]`. Checkpoint versionné DVC (`models/sft-lora-qwen3-1.7b`).
@@ -66,14 +70,32 @@ Métriques finales du run DPO (dernier step logué, tracking Weights & Biases) :
 - `rewards/chosen` : +0,55, `rewards/rejected` : -0,29
 - `train_loss` : 0,55
 
-Limite connue côté SFT seul, avant alignement DPO : le modèle pouvait produire des hallucinations de contenu clinique, dont certaines à risque (diagnostic différentiel erroné sur des tableaux évocateurs d'urgence vitale). Point de comparaison de référence pour l'évaluation post-DPO à venir (comparaison base / SFT / SFT+DPO sur le jeu d'évaluation clinique).
+## Évaluation clinique (base vs SFT vs SFT+DPO)
+
+Comparaison qualitative menée sur 7 vignettes cliniques (`scripts/compare_base_vs_sft.py`), incluant des cas ciblés sur des confusions diagnostiques à risque (AVC, appendicite).
+
+Constat principal : le DPO améliore la pertinence générale de forme (structure, niveau d'urgence, service), mais **ne corrige pas de façon fiable les erreurs de diagnostic différentiel sur des cas ambigus**, et introduit un risque spécifique de **fabrication d'éléments cliniques absents de l'énoncé** (antécédents, résultats d'examens inventés). Ce risque n'est pas capturé par les métriques de reward globales.
+
+Une dérive occasionnelle hors du vocabulaire fermé attendu pour `emergency_level` a également été observée en test d'inférence.
+
+Détail complet des cas observés : `notes/limites-securite-clinique-dpo.md` (non versionné, usage interne).
+
+Ce constat n'appelle pas de nouvel entraînement dans le cadre du POC. Il alimente la section limites et la roadmap du rapport technique (garde-fous à prévoir en production : vérification factuelle, citation des sources de l'énoncé, refus de générer un antécédent ou un résultat d'examen non fourni).
+
+## Déploiement
+
+- **Serveur d'inférence** : vLLM, servant le modèle SFT+DPO avec l'adaptateur LoRA fusionné (`merge_and_unload`) au modèle de base, sur le port 8000.
+- **API** : FastAPI (`api/main.py`), endpoint `POST /triage`, reconstruit le format de prompt d'entraînement à partir des symptômes fournis, journalise chaque interaction (`logs/triage_interactions.jsonl`) pour traçabilité et audit médical.
+- **Conteneurisation** : image Docker dédiée à l'API (dépendances minimales, pas d'entraînement embarqué), communique avec le serveur vLLM via `--network host`.
+- **CI/CD** : pipeline GitHub Actions à mettre en place (prochaine étape).
 
 ## Infrastructure
 
-- Entraînement sur VM GCP (`europe-west4`, GPU NVIDIA L4). Le run DPO complet a été exécuté en zone `europe-west4-c` suite à une indisponibilité temporaire (stockout) de la zone `europe-west4-a` initialement utilisée pour le SFT.
+- Entraînement et inférence sur VM GCP (`europe-west4-c`, `g2-standard-8`, GPU NVIDIA L4). Le run DPO complet a été exécuté en zone `europe-west4-c` suite à une indisponibilité temporaire (stockout) de la zone `europe-west4-a` initialement utilisée pour le SFT.
 - Versionnement des données et modèles via DVC, remote GCS.
-- Tracking des runs via Weights & Biases (projet `huggingface`).
+- Tracking des runs via Weights & Biases (projet `p14-triage-medical`).
+- Dépendances de sécurité : `cryptography` et `gitpython` mis à jour suite à alertes Dependabot (high). Une vulnérabilité modérée résiduelle sur `diskcache` (dépendance transitive DVC) reste sans correctif amont disponible, risque accepté et documenté pour ce cadre POC.
 
 ## Statut du projet
 
-En cours de développement. Dataset bilingue anonymisé, modèle SFT+LoRA, et alignement DPO tous finalisés. Évaluation comparative (base / SFT / SFT+DPO) et contrôles de sécurité clinique à venir.
+Dataset bilingue anonymisé, modèle SFT+LoRA, alignement DPO, évaluation clinique comparative, et endpoint de démonstration (vLLM + FastAPI + Docker) tous finalisés. Restent à faire : pipeline CI/CD GitHub Actions, rédaction du rapport technique, préparation de la soutenance.
