@@ -1,0 +1,9 @@
+.venv/
+models/
+data/
+notes/
+.git/
+__pycache__/
+*.pyc
+.dvc/cache/
+logs/

@@ -1,0 +1,4 @@
+fastapi>=0.139.2
+httpx
+uvicorn
+pydantic
