@@ -26,3 +26,4 @@ notes/
 wandb/
 *.log
 !models/*.dvc
+logs/*.jsonl
