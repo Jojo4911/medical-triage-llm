@@ -18,8 +18,8 @@ jobs:
       - name: Install dependencies
         run: uv sync
 
-      - name: Run smoke tests
-        run: uv run pytest api/tests/test_api_smoke.py -v
+      - name: Run smoke tests 
+        run: uv run python -m pytest api/tests/test_api_smoke.py -v
 
   build:
     runs-on: ubuntu-latest
