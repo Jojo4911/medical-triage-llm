@@ -2,7 +2,6 @@ name: CI
 
 on:
   push:
-    branches: [main]
   pull_request:
     branches: [main]
 
@@ -18,7 +17,7 @@ jobs:
       - name: Install dependencies
         run: uv sync
 
-      - name: Run smoke tests 
+      - name: Run smoke tests
         run: uv run python -m pytest api/tests/test_api_smoke.py -v
 
   build:
