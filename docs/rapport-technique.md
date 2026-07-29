@@ -1,12 +1,79 @@
+## 2. Méthodologie données
+
+### 2.1 Sources et constitution du corpus
+
+Le corpus d'entraînement supervisé agrège trois sources publiques : MedQuAD, corpus anglophone de questions-réponses médicales, ainsi que FrenchMedMCQA et MediQA pour la partie francophone. Cette composition répond à l'exigence d'un
+corpus bilingue, le service d'urgences visé recevant des patients dans les deux langues. Le jeu de préférences destiné à l'alignement provient d'une quatrième source distincte, UltraMedical-Preference, qui fournit des paires de réponses ordonnées et n'entre à aucun moment dans le corpus supervisé. Les licences d'utilisation de chacune de ces sources ont été vérifiées et sont documentées dans le dépôt, de même que leur origine.
+
+Le corpus supervisé compte environ 5 000 paires instruction-réponse. Ce volume constitue une cible dimensionnée pour le POC et non un objectif à maximiser : la qualité et l'homogénéité de format ont été privilégiées sur le volume.
+
+### 2.2 Normalisation et schéma de métadonnées
+
+Les trois sources supervisées présentent des formats hétérogènes, aucune n'étant nativement structurée pour une tâche de triage. Leur normalisation a été confiée à un modèle de langage léger, Mistral Small, chargé de reformuler
+les réponses brutes selon un format uniforme. Ce recours à un modèle utilitaire évite un travail de reformatage manuel incompatible avec le calendrier du projet, tout en produisant une régularité de structure que le fine-tuning
+supervisé peut ensuite installer dans le modèle.
+
+Le schéma de métadonnées associé retient les symptômes, les antécédents, les constantes, la source, le niveau d'urgence et le service concerné. Il remplit deux fonctions : fixer la structure de sortie attendue du modèle, et rendre les exemples filtrables et auditables après coup, chaque paire restant rattachée à la source dont elle procède.
+
+### 2.3 Anonymisation et conformité au RGPD
+
+Les données mobilisées relèvent du domaine médical et appellent à ce titre un traitement d'anonymisation documenté. Celui-ci s'appuie sur Presidio, associé à un modèle linguistique de reconnaissance d'entités, la stratégie de masquage
+retenue substituant aux entités détectées un marqueur de remplacement.
+
+Le paramétrage a fait l'objet de plusieurs arbitrages, l'application des réglages par défaut produisant un taux de faux positifs incompatible avec un corpus médical.
+
+Les entités de type organisation ont été exclues du périmètre de détection. Le vocabulaire clinique, en particulier les noms de protocoles, d'échelles et d'institutions médicales, y déclenchait des détections en nombre, alors que ces
+entités ne constituent pas des données identifiant un patient. Leur masquage dégradait le corpus sans bénéfice de protection.
+
+Les entités de localisation ont été conservées au niveau du pays. Cette information présente une valeur clinique propre, notamment en médecine des voyages, où l'origine géographique d'un séjour oriente une partie du raisonnement diagnostique, et son niveau de granularité ne permet pas d'identifier une personne.
+
+Le seuil de confiance appliqué aux détections a été fixé à 0,5. Ce réglage arbitre entre deux risques opposés, un seuil élevé laissant subsister des données identifiantes, un seuil bas dégradant le corpus par masquage excessif.
+
+Le cas des éponymes médicaux a exigé un traitement spécifique. Un nombre important de désignations cliniques comportent un patronyme, sans qu'il désigne un patient. Une liste d'exceptions a été constituée, complétée par des règles de contexte examinant les caractères qui précèdent et suivent immédiatement l'occurrence, de manière à distinguer un patronyme employé comme désignation d'une pathologie d'un patronyme désignant une personne.
+
+Un contrôle de qualité a été conduit après masquage. Il établit un résiduel de l'ordre de 0,9 % d'occurrences relevant des catégories éponyme et localisation dans le jeu de préférences. Ce résiduel est documenté comme une limite connue
+du traitement, aucune itération supplémentaire n'ayant été engagée au regard du périmètre du POC. Un défaut distinct, portant sur des marqueurs de remplacement subsistant dans le corpus d'entraînement, a par ailleurs été identifié
+tardivement et est analysé en section 6.
+
+### 2.4 Partitionnement et versionnement
+
+Le corpus supervisé est partitionné en trois jeux, entraînement, validation et test. Un jeu d'évaluation clinique est maintenu strictement à l'écart de cette partition et n'est mobilisé qu'après entraînement, afin qu'aucun des exemples
+servant à l'appréciation du comportement clinique n'ait été vu par le modèle.
+
+L'ensemble des jeux de données est versionné avec DVC, le stockage effectif étant assuré par un espace distant tandis que le dépôt Git ne conserve que les références. Ce dispositif remplit deux fonctions : il satisfait l'exigence de versionnement du livrable, et il conserve la trace de chaque transformation appliquée aux données, chaque état du corpus demeurant identifiable et restituable. Cette réversibilité constitue le support de l'auditabilité requise par le cadre réglementaire.
+
 ## 3. Méthodologie d'entraînement
 
-Le modèle que nous avons choisi pour fine-tuner est le modèle Qwen3-1.7b de base. C'est un modèle compact, bien documenté et adapté au fine-tuning.
+Le modèle retenu est Qwen3-1.7B-Base. Sa taille permet un entraînement complet sur un seul GPU de milieu de gamme, condition nécessaire au cadre du POC, et sa version de base, non ajustée aux instructions, a été préférée délibérément :
+c'est le fine-tuning supervisé qui doit installer le comportement attendu, suivi d'instruction et format de sortie de triage, plutôt qu'un alignement générique préexistant dont il faudrait ensuite corriger les effets.
 
-Dans un premier temps, grâce à trois datasets de médecine en français, nous avons pu faire un premier entraînement SFT sur le modèle grâce à LoRA. Il s'agit ici de présenter des questions et des réponses afin d'entraîner le modèle au contexte médical. Comme cet entraînement est une étape qui peut prendre énormément de temps, nous avons choisi de le faire sur une machine virtuelle qui dispose d'une carte graphique L4 de Google Cloud Platform. Cela nous a permis de faire un entraînement d'environ 26 minutes.
+### 3.1 Fine-tuning supervisé et adaptation à rang faible
 
-Pour l'entraînement sur les préférences, nous avons cherché la simplicité et choisi DPO au lieu de RLHF ou alors GRPO. En effet, la solution DPO, ajoutée à la possibilité de désactiver l'adaptateur LoRA, est une solution simple, très efficace, qui ne nécessite pas d'entraîner un modèle de récompense intermédiaire ni de boucle d'apprentissage par renforcement. Cela allège fortement la charge du GPU et la complexité de la pipeline. Cet entraînement a ainse duré environ 43 minutes.
+Le fine-tuning supervisé exploite les paires instruction-réponse issues des trois sources du corpus bilingue. Il ne s'agit pas seulement d'exposer le modèle à du vocabulaire médical : l'objectif est de lui faire produire, à partir d'une description de symptômes, une sortie structurée comportant un niveau d'urgence, une explication et une orientation, format qu'un modèle de base ne produit pas spontanément.
 
-Nous avons fait cet entraînement en une seule epoch, c'est un choix assumé pour un périmètre poc.
+L'entraînement recourt à l'adaptation à rang faible (LoRA). Les poids du modèle pré-entraîné restent figés ; l'apprentissage porte sur des matrices de rang réduit insérées auprès des couches ciblées, dont la contribution s'ajoute à celle des poids d'origine. Le nombre de paramètres effectivement entraînés est ainsi ramené à une fraction du total, ce qui réduit d'autant la mémoire requise et la taille de l'artefact produit, l'adaptateur seul étant conservé. La configuration retenue fixe un rang de 16 et un facteur alpha de 32, appliqués sur les quatre projections d’attention, les modules "q_proj", "k_proj", "v_proj" et "o_proj".
+
+Deux ajustements ont été imposés par la mémoire disponible sur le GPU utilisé. L'activation du recalcul des activations (gradient checkpointing) échange du temps de calcul contre de la mémoire en ne conservant pas les activations intermédiaires, et la longueur de séquence a été plafonnée à 512 tokens. Sans ces deux réglages, l'entraînement dépasse la mémoire disponible.
+
+L'entraînement s'est exécuté sur une machine virtuelle Google Cloud Platform équipée d'un GPU NVIDIA L4, pour une durée d'environ 26 minutes. Le recours à une instance payante plutôt qu'à un environnement gratuit constitue un choix
+délibéré : il supprime le risque d'interruption de session en cours d'entraînement, principal facteur de perte de temps identifié en amont du projet.
+
+### 3.2 Alignement par préférences
+
+L'alignement est appliqué au modèle issu du fine-tuning supervisé, et non au modèle de base. Cet ordre est déterminant : l'optimisation par préférences ajuste un modèle à partir des réponses qu'il produit lui-même, et son signal perd sa pertinence si le modèle ajusté génère des sorties éloignées de celles sur lesquelles les préférences ont été définies. Partir du modèle supervisé maintient l'alignement dans cette distribution.
+
+L'optimisation directe des préférences (DPO) a été retenue plutôt qu'un apprentissage par renforcement à partir de retours humains. Cette dernière famille de méthodes suppose d'entraîner au préalable un modèle de récompense,
+puis d'optimiser le modèle de langage contre ce modèle au sein d'une boucle de renforcement, soit deux entraînements successifs et trois modèles à maintenir en mémoire. Le DPO reformule le problème comme une optimisation directe sur les
+paires de préférences, et supprime le modèle de récompense intermédiaire. L'usage de LoRA apporte une simplification supplémentaire : le modèle de référence nécessaire au calcul de la perte s'obtient en désactivant l'adaptateur, ce qui évite d'en conserver une seconde copie en mémoire. Les méthodes plus récentes de la même famille ont été écartées, le périmètre du POC ne justifiant pas d'en explorer les variantes.
+
+Le jeu de préférences provient du corpus UltraMedical-Preference, restreint aux paires dont l'écart de qualité est le plus marqué, soit 5 000 paires retenues. L'entraînement a duré environ 43 minutes sur la même infrastructure.
+
+Il a été conduit sur une seule époque. Ce choix relève du périmètre du POC : la recherche d'un gain marginal par prolongation de l'entraînement ou par exploration d'hyperparamètres n'entre pas dans les objectifs du prototype, et
+une exposition répétée à un jeu de préférences de cette taille exposerait au surapprentissage.
+
+### 3.3 Traçabilité et reproductibilité
+
+Les deux entraînements ont été suivis au moyen de Weights & Biases, consignant les courbes de perte et les indicateurs de préférence. Les checkpoints produits sont versionnés avec DVC et stockés sur un espace distant, au même titre que les jeux de données, de sorte que chaque version du modèle reste rattachée à la version exacte des données dont elle procède. Les hyperparamètres et la graine aléatoire sont fixés et consignés, condition de reproductibilité des deux exécutions.
 
 ## 4. Architecture de déploiement
 
