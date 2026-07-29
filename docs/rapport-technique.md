@@ -1,3 +1,13 @@
+## 3. Méthodologie d'entraînement
+
+Le modèle que nous avons choisi pour fine-tuner est le modèle Qwen3-1.7b de base. C'est un modèle compact, bien documenté et adapté au fine-tuning.
+
+Dans un premier temps, grâce à trois datasets de médecine en français, nous avons pu faire un premier entraînement SFT sur le modèle grâce à LoRA. Il s'agit ici de présenter des questions et des réponses afin d'entraîner le modèle au contexte médical. Comme cet entraînement est une étape qui peut prendre énormément de temps, nous avons choisi de le faire sur une machine virtuelle qui dispose d'une carte graphique L4 de Google Cloud Platform. Cela nous a permis de faire un entraînement d'environ 26 minutes.
+
+Pour l'entraînement sur les préférences, nous avons cherché la simplicité et choisi DPO au lieu de RLHF ou alors GRPO. En effet, la solution DPO, ajoutée à la possibilité de désactiver l'adaptateur LoRA, est une solution simple, très efficace, qui ne nécessite pas d'entraîner un modèle de récompense intermédiaire ni de boucle d'apprentissage par renforcement. Cela allège fortement la charge du GPU et la complexité de la pipeline. Cet entraînement a ainse duré environ 43 minutes.
+
+Nous avons fait cet entraînement en une seule epoch, c'est un choix assumé pour un périmètre poc.
+
 ## 4. Architecture de déploiement
 
 L'entraînement produit un adaptateur LoRA distinct des poids du modèle de base, séparation qui a servi lors de l'alignement, l'adaptateur désactivé tenant lieu de modèle de référence. Cette organisation n'est plus utile au service. Les poids de l'adaptateur ont donc été fusionnés dans le modèle de base pour produire un artefact unique. La fusion supprime la surcouche d'application de l'adaptateur à chaque passe, évite d'avoir à gérer la cohérence entre deux fichiers versionnés séparément, et permet de servir le modèle comme n'importe quel modèle standard, sans dépendance au moteur d'adaptateurs.
