@@ -205,3 +205,35 @@ d'accord inter-évaluateurs. L'étude de référence citée en introduction, à 
 
 Les cas ne constituent pas davantage un échantillon : deux vignettes ont été construites pour cibler des confusions diagnostiques déjà suspectées, ce qui oriente les résultats vers les défaillances recherchées. Les conditions de
 génération diffèrent enfin d'un canal à l'autre. L'évaluation vaut donc comme signal qualitatif justifiant une validation clinique dédiée, non comme mesure du niveau de risque.
+
+## 7. Roadmap de passage à l'échelle
+
+Les défaillances établies en section 6 déterminent les conditions d'une poursuite du projet au-delà du prototype. Les chantiers décrits ci-dessous en découlent directement et sont présentés dans leur ordre de dépendance : aucune montée en charge n'est envisageable avant que soit disponible un instrument capable d'en mesurer les effets cliniques.
+
+### 7.1 Garde-fous
+
+Le premier chantier conditionne tous les autres. Le **mode A**, erreur de diagnostic différentiel, ne se referme par aucun réglage technique : il relève d'un jugement clinique que le dispositif d'évaluation actuel n'est pas en mesure de porter. Une validation digne de ce nom suppose un corpus de vignettes élargi, une notation en aveugle par au moins deux médecins, une procédure de consensus en cas de désaccord et une mesure de l'accord inter-évaluateurs. Cette évaluation est l'instrument sans lequel aucune des évolutions suivantes n'est vérifiable. Elle ne dispense pas de la contrainte de positionnement retenue dès l'origine : le système assiste le triage, il ne le décide pas, et sa sortie reste soumise à la validation d'un soignant.
+
+Le **mode B**, fabrication d'éléments cliniques, est le plus sévère et appelle un traitement propre. Il procède de ce qu'aucun mécanisme ne rattache la réponse produite au contenu de l'énoncé. Trois dispositions y répondent. La première consiste à faire expliciter au modèle les éléments de l'énoncé qui fondent son raisonnement, de sorte qu'un élément non attribuable devienne repérable à la lecture. La deuxième consiste à installer, par les données d'entraînement autant que par la consigne système, un comportement d'abstention : en l'absence d'antécédent ou de résultat d'examen fourni, le modèle doit signaler l'information manquante plutôt que la produire. La troisième consiste à interposer une vérification automatique confrontant les éléments cliniques cités à ceux présents en entrée, au moins pendant la phase initiale d'exploitation. Cette dernière disposition a un coût de latence qu'il faudra mesurer au regard des temps de réponse actuels. L'hypothèse d'un volume de données supervisées insuffisant reste par ailleurs à éprouver, mais elle n'a pas été établie et ne saurait tenir lieu de correctif.
+
+Le **mode C**, dérive hors vocabulaire fermé, admet la solution la plus directe. Le décodage contraint, supporté par le moteur d'inférence retenu, restreint les tokens candidats à ceux compatibles avec le schéma de sortie et rend une valeur hors liste impossible à produire, plutôt que détectable après coup. La validation du schéma, aujourd'hui limitée aux données entrantes, serait étendue à la sortie en second rideau.
+
+Le **mode D**, subsistance de marqueurs d'anonymisation, se corrige en amont du modèle. Un contrôle automatique, appliqué au corpus après masquage et avant constitution des jeux d'entraînement, suffit à intercepter les occurrences résiduelles. Ce contrôle constitue l'étape manquante identifiée en section 6 et s'intègre au pipeline de préparation des données comme condition de validation.
+
+### 7.2 Projection industrielle
+
+La phase suivante prévoit le recours à des modèles de plus grande capacité, de l'ordre de 32 milliards de paramètres et au-delà, adossés à un corpus étendu mobilisant l'intégralité des sources disponibles plutôt que l'échantillon de 5 000 paires retenu pour le prototype. Plusieurs familles récentes de modèles ouverts constituent des candidats à évaluer à ce titre comme Lllama 3.3 70B de Meta, Qwen3.5-35B-A3B-Base ou Qwen3-30B-A3B-Base d’Alibaba ou encore gemma-4-31B de Google Deepmind.
+
+La portée attendue de cette montée en capacité doit être appréciée avec prudence. Elle peut raisonnablement améliorer la finesse du raisonnement diagnostique sur les cas ambigus, donc réduire la fréquence du mode A. Elle ne supprime pas le mode B : un modèle de plus grande capacité formule ses fabrications de manière plus assurée et plus vraisemblable, ce qui les rend plus difficiles à repérer par un lecteur humain. La montée en taille déplace donc le risque sans le traiter, et ne saurait précéder la mise en place des garde-fous décrits ci-dessus.
+
+### 7.3 Conditions de mise en production
+
+Le passage en exploitation devrait être subordonné à la vérification préalable des conditions suivantes, chacune donnant lieu à une réponse binaire :
+
+- aucun élément clinique fabriqué détecté sur un corpus d'au moins cinquante vignettes, évalué en aveugle par deux cliniciens ;
+- aucun faux négatif sur les pathologies à fenêtre thérapeutique critique du même corpus, et taux d'erreur de diagnostic différentiel inférieur au seuil fixé conjointement avec l'équipe médicale ;
+- accord inter-évaluateurs mesuré et jugé suffisant sur ce corpus ;
+- aucune valeur hors liste fermée produite sur l'ensemble des sorties évaluées ;
+- aucun marqueur d'anonymisation résiduel détecté dans les jeux d'entraînement ;
+- authentification par utilisateur, journalisation nominative et rotation des journaux en place ;
+- comportement du service vérifié en accès concurrent sous charge représentative.
