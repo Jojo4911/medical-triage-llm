@@ -101,6 +101,47 @@ Trois vulnérabilités subsistent, de sévérité modérée à faible. Aucune ne
 supposerait de renoncer à un composant conditionnant un livrable. Chacune a fait l'objet d'une analyse de sa condition d'exploitation, aucune n'étant atteignable dans le contexte d'usage retenu, à savoir un poste de travail et
 une machine virtuelle dédiée, sans exposition réseau ni accès multi-utilisateur. Elles sont traitées comme des risques acceptés et documentés, ce statut devant être réexaminé à toute mise en production effective.
 
+## 5. Résultats et métriques
+
+### 5.1 Indicateurs d'entraînement
+
+L'alignement a été précédé d'un run pilote sur une cinquantaine de paires, destiné à valider le pipeline d'entraînement avant engagement du run complet. Sa fonction était la vérification technique de la chaîne, non l'établissement
+d'une référence de performance. Le run complet a ensuite porté sur les 5 000 paires du jeu de préférences, sur une époque.
+
+| Métrique            | Run complet | Run pilote (50 exemples) |
+|---------------------|-------------|--------------------------|
+| train_loss          | 0,5484      | :                        |
+| rewards/accuracies  | 0,75        | 0,60 à 0,67              |
+| rewards/margins     | 0,8392      | 0,06 à 0,09              |
+| rewards/chosen      | +0,5528     | :                        |
+| rewards/rejected    | -0,2864     | :                        |
+| mean_token_accuracy | 0,631       | :                        |
+
+Le modèle ordonne correctement les paires de préférences dans trois cas sur quatre. Les scores attribués aux réponses préférées et rejetées se séparent nettement, le premier devenant positif et le second négatif, pour une marge moyenne de 0,84. Ces valeurs établissent que l'entraînement a convergé sur le signal de préférence attendu, sans divergence ni effondrement de la perte.
+
+### 5.2 Comparaison qualitative sur vignettes cliniques
+
+Cinq vignettes cliniques ont été soumises aux modèles entraînés successifs, dont deux construites pour cibler des confusions diagnostiques à risque.
+
+| Vignette                               | SFT (sans adaptateur) | SFT+DPO                                | Verdict DPO        |
+|----------------------------------------|-----------------------|----------------------------------------|--------------------|
+| Douleur thoracique (cardiaque)         | Diagnostic correct    | Diagnostic erroné + antécédent inventé | Dégradation        |
+| Fièvre pédiatrique                     | Traitement pertinent  | Diagnostic non fondé + examen inventé  | Dégradation sévère |
+| Céphalées légères                      | Cause bénigne         | Cause bénigne                          | Neutre             |
+| Faiblesse + trouble de la parole (AVC) | Diagnostic correct    | Diagnostic erroné (TVP)                | Dégradation        |
+| Douleur abdominale (appendicite)       | Diagnostic erroné     | Diagnostic correct                     | Amélioration       |
+
+L'alignement améliore la forme des réponses, leur structure et leur positionnement sur l'échelle d'urgence, mais son effet sur la justesse diagnostique n'est pas uniforme : une amélioration, un cas neutre et trois dégradations, dont une portant sur un diagnostic sans fondement dans l'énoncé. Ces observations, ainsi que celles issues des tests sur l'endpoint, sont analysées en section 6.
+
+### 5.3 Latence et robustesse
+
+La latence a été mesurée sur cinq requêtes successives adressées à l'endpoint de triage, dans les conditions de la démonstration. Les temps de réponse s'échelonnent de 1,17 à 2,28 secondes, pour une moyenne de l'ordre de 1,57
+seconde. Cet ordre de grandeur est compatible avec un usage interactif en situation de triage, où le soignant saisit une description puis attend une proposition d'orientation. Aucun test de charge n'a été conduit : la mesure porte sur des requêtes séquentielles émises par un utilisateur unique et ne préjuge pas du comportement du service en accès concurrent.
+
+Trois cas limites ont été soumis à l'endpoint pour en éprouver la robustesse. Une requête au format invalide est rejetée par la validation du schéma avant toute génération, avec un code d'erreur explicite et un message identifiant le champ en cause. Une entrée vide et une entrée de longueur excessive ne provoquent pas d'interruption du service, mais donnent lieu à une génération : le modèle produit une réponse dans les deux cas, dépourvue de cohérence pour la seconde. Aucune défaillance du serveur n'a été observée sur les trois cas.
+
+La robustesse du service est donc établie au sens de la disponibilité, le service ne tombant sur aucune des entrées éprouvées, mais non au sens de la pertinence de la sortie : une entrée que le système devrait refuser de traiter produit néanmoins une réponse mise en forme comme une réponse valide.
+
 ## 6. Analyse critique et limites
 
 Les défaillances observées lors de l'évaluation comparative et des tests sur l'endpoint ne relèvent pas d'un mécanisme unique. Elles se répartissent en quatre modes distincts par leur origine et par la nature du risque qu'ils portent, deux d'ordre clinique et deux d'ordre technique. Ils sont présentés ici selon cette typologie plutôt que dans l'ordre chronologique de leur
