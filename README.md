@@ -11,7 +11,7 @@ Fine-tuner un modèle de langage compact (Qwen3-1.7B) pour assister le personnel
 - **SFT (Supervised Fine-Tuning)** avec LoRA sur un dataset médical bilingue FR/EN
 - **DPO (Direct Preference Optimization)** pour aligner le modèle sur les pratiques cliniques validées
 - **Déploiement** via vLLM, exposé en API FastAPI, conteneurisé avec Docker
-- **CI/CD** automatisé avec GitHub Actions (à venir)
+- **Intégration continue** GitHub Actions : tests de l'API puis construction de l'image Docker
 
 Statut : Proof of Concept, pas de mise en production.
 
@@ -72,13 +72,13 @@ Métriques finales du run DPO (dernier step logué, tracking Weights & Biases) :
 
 ## Évaluation clinique (base vs SFT vs SFT+DPO)
 
-Comparaison qualitative menée sur 7 vignettes cliniques (`scripts/compare_base_vs_sft.py`), incluant des cas ciblés sur des confusions diagnostiques à risque (AVC, appendicite).
+Comparaison qualitative menée sur 5 vignettes cliniques (`scripts/compare_base_vs_sft.py`), complétée par 2 cas observés lors des tests sur l'endpoint et sur le conteneur, incluant des cas ciblés sur des confusions diagnostiques à risque (AVC, appendicite).
 
 Constat principal : le DPO améliore la pertinence générale de forme (structure, niveau d'urgence, service), mais **ne corrige pas de façon fiable les erreurs de diagnostic différentiel sur des cas ambigus**, et introduit un risque spécifique de **fabrication d'éléments cliniques absents de l'énoncé** (antécédents, résultats d'examens inventés). Ce risque n'est pas capturé par les métriques de reward globales.
 
 Une dérive occasionnelle hors du vocabulaire fermé attendu pour `emergency_level` a également été observée en test d'inférence.
 
-Détail complet des cas observés : `notes/limites-securite-clinique-dpo.md` (non versionné, usage interne).
+Détail complet des cas observés et analyse par mode de défaillance : rapport technique, section 6 (reports/).
 
 Ce constat n'appelle pas de nouvel entraînement dans le cadre du POC. Il alimente la section limites et la roadmap du rapport technique (garde-fous à prévoir en production : vérification factuelle, citation des sources de l'énoncé, refus de générer un antécédent ou un résultat d'examen non fourni).
 
@@ -87,15 +87,15 @@ Ce constat n'appelle pas de nouvel entraînement dans le cadre du POC. Il alimen
 - **Serveur d'inférence** : vLLM, servant le modèle SFT+DPO avec l'adaptateur LoRA fusionné (`merge_and_unload`) au modèle de base, sur le port 8000.
 - **API** : FastAPI (`api/main.py`), endpoint `POST /triage`, reconstruit le format de prompt d'entraînement à partir des symptômes fournis, journalise chaque interaction (`logs/triage_interactions.jsonl`) pour traçabilité et audit médical.
 - **Conteneurisation** : image Docker dédiée à l'API (dépendances minimales, pas d'entraînement embarqué), communique avec le serveur vLLM via `--network host`.
-- **CI/CD** : pipeline GitHub Actions à mettre en place (prochaine étape).
+- **Intégration continue** : pipeline GitHub Actions (.github/workflows/ci.yml), déclenché à chaque commit et à chaque pull request vers main. La mise en service sur la VM reste manuelle : l'image n'est ni publiée sur un registre ni déployée automatiquement.
 
 ## Infrastructure
 
 - Entraînement et inférence sur VM GCP (`europe-west4-c`, `g2-standard-8`, GPU NVIDIA L4). Le run DPO complet a été exécuté en zone `europe-west4-c` suite à une indisponibilité temporaire (stockout) de la zone `europe-west4-a` initialement utilisée pour le SFT.
 - Versionnement des données et modèles via DVC, remote GCS.
 - Tracking des runs via Weights & Biases (projet `p14-triage-medical`).
-- Dépendances de sécurité : `cryptography` et `gitpython` mis à jour suite à alertes Dependabot (high). Une vulnérabilité modérée résiduelle sur `diskcache` (dépendance transitive DVC) reste sans correctif amont disponible, risque accepté et documenté pour ce cadre POC.
+- Dépendances de sécurité : cryptography et gitpython mis à jour suite à alertes Dependabot (high), 10 CVE vLLM corrigées par montée de version. Trois vulnérabilités résiduelles (setuptools, diskcache, torch), sans correctif compatible avec les contraintes de vLLM : analyse et décisions dans `docs/securite-dependances.md`.
 
 ## Statut du projet
 
-Dataset bilingue anonymisé, modèle SFT+LoRA, alignement DPO, évaluation clinique comparative, et endpoint de démonstration (vLLM + FastAPI + Docker) tous finalisés. Restent à faire : pipeline CI/CD GitHub Actions, rédaction du rapport technique, préparation de la soutenance.
+Dataset bilingue anonymisé, modèle SFT+LoRA, alignement DPO, évaluation clinique comparative, et endpoint de démonstration (vLLM + FastAPI + Docker) tous finalisés. Intégration continue et rapport technique finalisés.

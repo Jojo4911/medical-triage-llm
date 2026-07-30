@@ -1,3 +1,13 @@
+## 1. Contexte et valeur clinique
+
+Le service des urgences du Centre Hospitalier Saint-Aurélien connaît une surcharge constante, accentuée aux heures de pointe par des effectifs de triage insuffisants. L'accueil des patients y repose sur une évaluation initiale qui n'établit pas un diagnostic mais attribue un niveau de priorité, de l'urgence maximale à la prise en charge différée. Un allongement des délais à cette étape fait peser un risque propre : celui qu'un cas critique ne soit pas identifié assez tôt.
+
+Le présent rapport rend compte d'un prototype d'agent conversationnel destiné à assister cette évaluation initiale. Il couvre l'ensemble de la chaîne réalisée, de la constitution d'un corpus médical bilingue anonymisé jusqu'à l'exposition du modèle spécialisé par une interface de programmation, en passant par son adaptation par fine-tuning supervisé puis par alignement sur préférences. Il s'agit d'une preuve de concept : son objet est d'établir la faisabilité technique du dispositif et d'en éprouver la valeur clinique, non de livrer un système exploitable en l'état.
+
+Le positionnement retenu, celui d'une assistance soumise à la validation d'un soignant, ne relève pas de la précaution de principe. L'étude randomisée jointe à la mission, conduite sur cinquante médecins répartis en deux groupes, observe que le modèle de langage employé seul obtient sur des vignettes diagnostiques des scores de raisonnement supérieurs à ceux des deux groupes de praticiens, mais que la mise à disposition de ce même modèle auprès des médecins n'améliore pas significativement leur performance. La performance brute d'un modèle ne se convertit donc pas mécaniquement en valeur clinique : c'est la conception de son intégration au travail réel qui en décide. Ce constat oriente le prototype vers un rôle d'appui à la décision du soignant, et non de substitution.
+
+Le prototype établit la faisabilité de la chaîne technique complète, depuis la préparation conforme des données jusqu'à un service d'inférence fonctionnel aux temps de réponse compatibles avec un usage interactif. Il n'établit pas la fiabilité clinique du modèle obtenu. L'évaluation conduite met au contraire en évidence des défaillances de nature à compromettre un usage réel, analysées en section 6, dont l'identification constitue l'un des apports de ce travail : elles déterminent les conditions à réunir avant toute mise en exploitation, énoncées en section 7.
+
 ## 2. Méthodologie données
 
 ### 2.1 Sources et constitution du corpus
