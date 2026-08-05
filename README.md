@@ -35,7 +35,6 @@ Analyse complète par mode de défaillance : rapport technique, section 6 (`docs
 │   ├── raw/         # données brutes, non versionnées dans git (DVC)
 │   ├── processed/   # données nettoyées et anonymisées, non versionnées dans git (DVC)
 │   └── eval/        # jeu d'évaluation clinique
-├── src/             # code source
 ├── scripts/         # scripts d'exploration, de préparation des données et d'entraînement
 │   └── checks/      # scripts de vérification ponctuelle (audits, diagnostics)
 ├── models/          # checkpoints et poids, non versionnés dans git (DVC)
